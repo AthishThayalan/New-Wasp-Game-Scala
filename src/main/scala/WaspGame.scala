@@ -4,8 +4,8 @@ import scala.io.StdIn.readLine
 
 object WaspGame {
 
-  def initialise(): List[Wasp] = {
-    new QueenWasp() :: List.fill(5)(new WorkerWasp()) ::: List.fill(8)(new DroneWasp())
+  def initialise(): (List[Wasp], Int) = {
+    (new QueenWasp() :: List.fill(5)(new WorkerWasp()) ::: List.fill(8)(new DroneWasp()), 0)
   }
 
   def hitRandomWasp(wasps: List[Wasp]): List[Wasp] = {
@@ -42,30 +42,30 @@ object WaspGame {
   }
 
   @tailrec
-  private def fireUntilQueenDies(wasps: List[Wasp]): Unit = {
+  private def fireUntilQueenDies(wasps: List[Wasp], fireCount: Int): Unit = {
     if (winCondition(wasps)) {
       println("The Queen Wasp is dead. You win.")
+      println(s"Fire occurred $fireCount times.")
       askForRestart()
     } else {
       val updatedWasps = hitRandomWasp(wasps)
-      displayState(updatedWasps)
-      fireUntilQueenDies(updatedWasps)
+      displayState(updatedWasps, fireCount + 1)
+      fireUntilQueenDies(updatedWasps, fireCount + 1)
     }
-
   }
 
-  def displayState(wasps: List[Wasp]): Unit = {
+  def displayState(wasps: List[Wasp], fireCount: Int): Unit = {
     println("Current Wasp States:")
     println("====================")
     wasps.foreach { wasp =>
       val status = if (wasp.isAlive) "Alive" else "Dead"
       println(f"${wasp.name}%-20s ${wasp.healthPoints} HP [$status]")
     }
-    println("====================\n")
+    println("====================")
+    println(s"Fire occurred $fireCount times.\n")
   }
 
-
-  def winCondition(wasp: List[Wasp]): Boolean = !wasp.filter(_.isAlive).exists(_.isInstanceOf[QueenWasp])
+  def winCondition(wasps: List[Wasp]): Boolean = !wasps.filter(_.isAlive).exists(_.isInstanceOf[QueenWasp])
 
   @tailrec
   private def askForRestart(): Unit = {
@@ -81,39 +81,40 @@ object WaspGame {
   }
 
   @tailrec
-  private def gameLoop(wasps: List[Wasp]): Unit = {
-    displayState(wasps)
+  private def gameLoop(state: (List[Wasp], Int)): Unit = {
+    val (wasps, fireCount) = state
+    displayState(wasps, fireCount)
     println("Enter Commands (fire,restart,quit): ")
     val command = readLine().trim.toLowerCase
 
     command match {
       case "fire" =>
         val updatedWasps = hitRandomWasp(wasps)
+        val updatedFireCount = fireCount + 1
         if (winCondition(updatedWasps)) {
           println("The Queen Wasp and her hive are dead! You win.")
+          println(s"Fire occurred $updatedFireCount times.")
           askForRestart()
-        } else gameLoop(updatedWasps)
+        } else gameLoop((updatedWasps, updatedFireCount))
       case "restart" => gameLoop(initialise())
       case "q" =>
         val updatedWasps2 = hitQueen(wasps)
+        val updatedFireCount = fireCount + 1
         if (winCondition(updatedWasps2)) {
           println("The Queen Wasp and her hive are dead! You win.")
+          println(s"Fire occurred $updatedFireCount times.")
           askForRestart()
-        } else gameLoop(updatedWasps2)
+        } else gameLoop((updatedWasps2, updatedFireCount))
       case "fireuntil" =>
-        fireUntilQueenDies(wasps)
+        fireUntilQueenDies(wasps, fireCount)
       case "quit" => println("Exiting game ... ")
       case _ =>
         println("Invalid command. Please enter fire, restart, quit, or fireuntil.")
-        gameLoop(wasps)
+        gameLoop(state)
     }
-
-
   }
 
   def main(args: Array[String]): Unit = {
     gameLoop(initialise())
   }
-
-
 }
